@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Tareas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        .card-stat {
+            border: none;
+            border-radius: 10px;
+            transition: transform 0.2s;
+        }
+        .card-stat:hover {
+            transform: translateY(-2px);
+        }
+        .tarea-card {
+            border-left: 4px solid;
+            transition: all 0.3s;
+            border-radius: 8px;
+        }
+        .tarea-card:hover {
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .prioridad-alta { border-left-color: #dc3545; }
+        .prioridad-media { border-left-color: #ffc107; }
+        .prioridad-baja { border-left-color: #198754; }
+        .vencida { background-color: #fff5f5; }
+        .completada { opacity: 0.7; }
+        .btn-action { opacity: 0; transition: opacity 0.3s; }
+        .tarea-card:hover .btn-action { opacity: 1; }
+    </style>
+</head>
+<body class="bg-light">
+    <nav class="navbar navbar-dark bg-primary">
+        <div class="container">
+            <span class="navbar-brand mb-0 h1">
+                <i class="bi bi-check-all"></i> Sistema de Tareas
+            </span>
+        </div>
+    </nav>
+
+    <div class="container-fluid py-4">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-lg-3 mb-4">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="bi bi-funnel"></i> Filtros</h5>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Estado</label>
+                            <div class="d-grid gap-2">
+                                <a href="?estado=pendiente" class="btn btn-outline-warning btn-sm">
+                                    <i class="bi bi-clock"></i> Pendientes
+                                </a>
+                                <a href="?estado=en_progreso" class="btn btn-outline-info btn-sm">
+                                    <i class="bi bi-arrow-repeat"></i> En Progreso
+                                </a>
+                                <a href="?estado=completada" class="btn btn-outline-success btn-sm">
+                                    <i class="bi bi-check-circle"></i> Completadas
+                                </a>
+                                <a href="?" class="btn btn-outline-secondary btn-sm">Todas</a>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalTarea">
+                                <i class="bi bi-plus-circle"></i> Nueva Tarea
+                            </button>
+                            <button class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalCategoria">
+                                <i class="bi bi-folder-plus"></i> Nueva Categoría
+                            </button>
+                            <a href="/admin/" class="btn btn-outline-secondary">
+                                <i class="bi bi-gear"></i> Administrar
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Estadísticas -->
+                <div class="card shadow-sm mt-4">
+                    <div class="card-body">
+                        <h5 class="card-title"><i class="bi bi-graph-up"></i> Estadísticas</h5>
+                        <div class="row text-center">
+                            <div class="col-6 mb-3">
+                                <div class="card card-stat bg-primary text-white">
+                                    <div class="card-body py-2">
+                                        <h5>{{ estadisticas.total }}</h5>
+                                        <small>Total</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <div class="card card-stat bg-success text-white">
+                                    <div class="card-body py-2">
+                                        <h5>{{ estadisticas.completadas }}</h5>
+                                        <small>Completadas</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="card card-stat bg-warning text-white">
+                                    <div class="card-body py-2">
+                                        <h5>{{ estadisticas.pendientes }}</h5>
+                                        <small>Pendientes</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="card card-stat bg-danger text-white">
+                                    <div class="card-body py-2">
+                                        <h5>{{ estadisticas.vencidas }}</h5>
+                                        <small>Vencidas</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contenido Principal -->
+            <div class="col-lg-9">
+                {% if messages %}
+                <div class="row">
+                    <div class="col-12">
+                        {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                <div class="row">
+                    {% for tarea in tareas %}
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card tarea-card h-100 {% if tarea.esta_vencida %}vencida{% endif %} prioridad-{{ tarea.prioridad }} {% if tarea.estado == 'completada' %}completada{% endif %}">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h6 class="card-title mb-0">{{ tarea.titulo }}</h6>
+                                    <div class="btn-group btn-action">
+                                        <button class="btn btn-sm btn-outline-primary"
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#modalEditar"
+                                                onclick="cargarTareaEditar({{ tarea.id }})">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {% if tarea.descripcion %}
+                                <p class="card-text small text-muted">{{ tarea.descripcion|truncatewords:10 }}</p>
+                                {% endif %}
+
+                                <div class="small">
+                                    {% if tarea.categoria %}
+                                    <span class="badge" style="background-color: {{ tarea.categoria.color }}; color: white;">
+                                        {{ tarea.categoria }}
+                                    </span>
+                                    {% endif %}
+
+                                    <div class="mt-2">
+                                        <small class="text-muted">
+                                            <i class="bi bi-calendar"></i> {{ tarea.fecha_creacion|date:"d M" }}
+                                        </small>
+                                        {% if tarea.fecha_vencimiento %}
+                                        <br>
+                                        <small class="{% if tarea.esta_vencida %}text-danger{% else %}text-muted{% endif %}">
+                                            <i class="bi bi-clock"></i> Vence: {{ tarea.fecha_vencimiento|date:"d M Y" }}
+                                        </small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="d-flex justify-content-between align-items-center mt-3">
+                                    <form method="post" action="{% url 'cambiar_estado' tarea.id %}" class="d-inline">
+                                        {% csrf_token %}
+                                        <select name="estado" onchange="this.form.submit()" class="form-select form-select-sm">
+                                            {% for estado_val, estado_label in tarea.ESTADOS %}
+                                            <option value="{{ estado_val }}" {% if tarea.estado == estado_val %}selected{% endif %}>
+                                                {{ estado_label }}
+                                            </option>
+                                            {% endfor %}
+                                        </select>
+                                    </form>
+
+                                    <form method="post" action="{% url 'eliminar_tarea' tarea.id %}" class="d-inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                onclick="return confirm('¿Eliminar esta tarea?')">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="col-12">
+                        <div class="text-center py-5">
+                            <i class="bi bi-inbox display-1 text-muted"></i>
+                            <h3 class="text-muted">No hay tareas</h3>
+                            <p class="text-muted">Crea tu primera tarea para comenzar</p>
+                            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalTarea">
+                                <i class="bi bi-plus-circle"></i> Crear Primera Tarea
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modales -->
+    {% include 'webapp/modales.html' %}
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function cargarTareaEditar(tareaId) {
+            fetch(`/editar-tarea/${tareaId}/`)
+                .then(response => response.text())
+                .then(html => {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(html, 'text/html');
+                    const formulario = doc.querySelector('.modal-body form');
+                    
+                    if (formulario) {
+                        document.getElementById('contenidoEditar').innerHTML = formulario.innerHTML;
+                        document.getElementById('formEditar').action = `/editar-tarea/${tareaId}/`;
+                    }
+                });
+        }
+
+        setTimeout(() => {
+            const alerts = document.querySelectorAll('.alert');
+            alerts.forEach(alert => {
+                const bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            });
+        }, 5000);
+    </script>
+</body>
+</html>
